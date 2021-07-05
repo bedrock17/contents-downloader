@@ -59,9 +59,16 @@ def download_comic_list(title_id: int, name: str, target_path: str):
 
 def downlaod_comic(title_id: int, comic_no: int, title_name: str, target_path: str):
   print("downlaod comic", title_id, comic_no, title_name)
-  page_link = NAVER_COMIC_PREFIX + NAVER_COMIT_DETAIL_URI_FORMAT % (title_id, comic_no)
 
   download_path = target_path + "/" + str(title_id) + "/" + str(comic_no)
+
+  meta_path = download_path + "/meta.json"
+  
+  if os.path.isfile(meta_path):
+    return
+
+  page_link = NAVER_COMIC_PREFIX + NAVER_COMIT_DETAIL_URI_FORMAT % (title_id, comic_no)
+
   os.makedirs(download_path, exist_ok=True)
 
   print(page_link)
@@ -71,11 +78,6 @@ def downlaod_comic(title_id: int, comic_no: int, title_name: str, target_path: s
   time.sleep(1)
   soup = BeautifulSoup(page_text, 'html.parser')
   comic_img_list = soup.select("div.wt_viewer > img")
-
-  meta_path = download_path + "/meta.json"
-
-  if os.path.isfile(meta_path):
-    return
 
   images = []
   for image in comic_img_list:
