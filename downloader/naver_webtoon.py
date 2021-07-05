@@ -1,13 +1,19 @@
 
-from ast import parse
+
 from downloader.interface import contents_manager
 import requests as req
 from bs4 import BeautifulSoup
 import os
+import time
+import json
+
 
 NAVER_COMIC_PREFIX = "https://comic.naver.com"
 NAVER_COMIT_LIST_URI_FORMAT = "/webtoon/list.nhn?titleId=%d&page=%d"
+NAVER_COMIT_DETAIL_URI_FORMAT = "/webtoon/detail.nhn?titleId=%d&no=%d"
 OUTPUT_PREFIX = "output"
+
+header = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"}
 
 def parse_get_param(uri: str, key: str) -> str:
   ret = ""
@@ -20,7 +26,7 @@ def parse_get_param(uri: str, key: str) -> str:
       break
   return ret
 
-def download_comic_list(title_id, name):
+def download_comic_list(title_id: int, name: str, target_path: str):
   continue_download = True
   page_index = 1
 
@@ -46,19 +52,55 @@ def download_comic_list(title_id, name):
 
       download_visit[no] = True
       print(name, comic_link.string, no)
-      downlaod_comic(no, name)
+      downlaod_comic(title_id, no, comic_link.string, target_path)
 
     page_index += 1
 
-def downlaod_comic(comic_no, title_name):
-  print("downlaod comic", comic_no, title_name)
-  # 해당 회수에 맞춰 URI를 만들고
-  # 페이지를 받은다음
-  # 해당화를 저장할 폴더를 만들고
-  # 페이지를 파싱해서
-  # 이미지를 순서대로 리스트로 만들어서
-  # 이미지를 하나하나 받고
-  # metadata를 json으로 하나 만들어야함 (해당화에 이름등을 저장)
+def downlaod_comic(title_id: int, comic_no: int, title_name: str, target_path: str):
+  print("downlaod comic", title_id, comic_no, title_name)
+  page_link = NAVER_COMIC_PREFIX + NAVER_COMIT_DETAIL_URI_FORMAT % (title_id, comic_no)
+
+  download_path = target_path + "/" + str(title_id) + "/" + str(comic_no)
+  os.makedirs(download_path, exist_ok=True)
+
+  print(page_link)
+
+  page_text = req.get(page_link).text
+
+  time.sleep(1)
+  soup = BeautifulSoup(page_text, 'html.parser')
+  comic_img_list = soup.select("div.wt_viewer > img")
+
+  images = []
+  for image in comic_img_list:
+    image_path = download_path + "/" + image['id'] + ".jpg"
+
+    images.append(image['id'] + ".jpg")
+
+    res = req.get(image['src'], headers=header)
+
+    print(image['src'])
+
+    with open(image_path, "wb") as f:
+      f.write(res.content)
+      f.close()
+    
+  meta = json.dumps(
+    {
+      'title_id': title_id,
+      'title': title_name,
+      'comic_no': comic_no,
+      'images': images
+    }, 
+    ensure_ascii=False
+  )
+
+  meta_path = download_path + "/meta.json"
+  with open(meta_path, "wt") as f:
+    f.write(meta)
+    f.close()
+    
+    
   
 
 class naver_webtoon_downloader(contents_manager):
@@ -98,10 +140,11 @@ class naver_webtoon_downloader(contents_manager):
     return self.contents_info_list
     
   def download_contents(self):
+    target_path = OUTPUT_PREFIX + "/" + self.contents_provider_name
     os.makedirs(OUTPUT_PREFIX + "/" + self.contents_provider_name, exist_ok=True)
 
     for info in self.contents_info_list:
       title_id, name = info
       print(f"Download comic [{title_id}][{name}]")
-      download_comic_list(title_id, name)
+      download_comic_list(title_id, name, target_path)
   
