@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import os
 import time
 import json
+import os.path
 
 
 NAVER_COMIC_PREFIX = "https://comic.naver.com"
@@ -71,6 +72,11 @@ def downlaod_comic(title_id: int, comic_no: int, title_name: str, target_path: s
   soup = BeautifulSoup(page_text, 'html.parser')
   comic_img_list = soup.select("div.wt_viewer > img")
 
+  meta_path = download_path + "/meta.json"
+
+  if os.path.isfile(meta_path):
+    return
+
   images = []
   for image in comic_img_list:
     image_path = download_path + "/" + image['id'] + ".jpg"
@@ -95,14 +101,10 @@ def downlaod_comic(title_id: int, comic_no: int, title_name: str, target_path: s
     ensure_ascii=False
   )
 
-  meta_path = download_path + "/meta.json"
   with open(meta_path, "wt") as f:
     f.write(meta)
     f.close()
     
-    
-  
-
 class naver_webtoon_downloader(contents_manager):
 
   contents_info_list = []
