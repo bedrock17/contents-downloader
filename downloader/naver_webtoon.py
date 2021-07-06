@@ -81,13 +81,15 @@ def downlaod_comic(title_id: int, comic_no: int, title_name: str, target_path: s
 
   images = []
   for image in comic_img_list:
+    print(image['src'])
+    if image['src'].find("agerate") != -1:
+       continue
     image_path = download_path + "/" + image['id'] + ".jpg"
 
     images.append(image['id'] + ".jpg")
 
     res = req.get(image['src'], headers=header)
 
-    print(image['src'])
 
     with open(image_path, "wb") as f:
       f.write(res.content)
